@@ -6,6 +6,8 @@ const { ConversationManager } = require('../../managers/ConversationManager');
 const ai = new GoogleGenAI({ apiKey });
 const conversationManager = new ConversationManager();
 
+const { EmbedBuilder } = require('discord.js');
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('ai')
@@ -22,14 +24,11 @@ module.exports = {
         await interaction.deferReply();
 
         const prompt = interaction.options.getString('prompt');
-
-        const history =
-            conversationManager.getHistory(interaction.user.id);
+        const history = conversationManager.getHistory(interaction.user.id);
 
         try {
 
-            const response =
-                await ai.models.generateContent({
+            const response = await ai.models.generateContent({
 
                     model: 'gemini-2.5-flash',
 
@@ -42,8 +41,7 @@ module.exports = {
                     ],
                 });
 
-            const text = 
-            response.text;
+            const text = response.text;
 
             conversationManager.updateChatHistory(
                 interaction.user.id,
@@ -51,15 +49,16 @@ module.exports = {
                 text
             );
 
-            await interaction.editReply(text);
+            const chunks = text.match(/[\s\S]{1,2000}/g) || ['No response.'];
+
+            await interaction.editReply(chunks[0]);
+            for (let i = 1; i < chunks.length; i++) {
+                await interaction.followUp(chunks[i]);
+            }
 
         } catch (error) {
-
             console.error(error);
-
-            await interaction.editReply(
-                'Error generating response.'
-            );
+            await interaction.editReply('Error generating response.');
         }
     },
 };
