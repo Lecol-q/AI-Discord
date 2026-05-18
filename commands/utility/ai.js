@@ -26,18 +26,55 @@ module.exports = {
         const prompt = interaction.options.getString('prompt');
         const history = conversationManager.getHistory(interaction.user.id);
 
+        // Gemini server conciousness
+        const systemInstruction = `You are a helpful assistant in a Discord server. Here is the server info:
+
+Server Name: ${interaction.guild.name}
+Server ID: ${interaction.guild.id}
+Member Count: ${interaction.guild.memberCount}
+Channel being used: #${interaction.channel.name}
+User talking to you: ${interaction.user.username}
+
+Channels:
+${interaction.guild.channels.cache
+                .filter(c => c.type === 0)
+                .map(c => `- #${c.name}`)
+                .join('\n')}
+
+Roles:
+${interaction.guild.roles.cache
+                .map(r => `- ${r.name}`)
+                .join('\n')}
+
+Members:
+${interaction.guild.members.cache
+                .map(m => `- ${m.user.username} (nickname: ${m.nickname || 'none'}, roles: ${m.roles.cache
+                    .filter(r => r.name !== '@everyone')
+                    .map(r => r.name)
+                    .join(', ') || 'none'}, joined: ${m.joinedAt.toDateString()})`)
+                .join('\n')}`;
+
         try {
 
             const response = await ai.models.generateContent({
 
                     model: 'gemini-2.5-flash',
+                    systemInstruction,
 
                     contents: [
+                        {
+                            role: 'user',
+                            parts: [{ text: systemInstruction}],
+                        },
+                        {
+                            role: 'model',
+                            parts: [{ text: 'Understood! I am aware of the server and will use this information to help.' }],
+                        },
                         ...history,
                         {
                             role: 'user',
                             parts: [{ text: prompt }],
-                        },
+                        }
                     ],
                 });
 

@@ -11,7 +11,12 @@ const ai = new GoogleGenAI({ apiKey });
 module.exports = {
 	name: Events.ClientReady,
 	once: true,
-	execute(client) {
+	async execute(client) {
 		console.log(`Ready! Logged in as ${client.user.tag}`);
+
+		for (const guild of client.guilds.cache.values()) {
+			await guild.members.fetch();
+			console.log('Cached members for: ${guild.name}');
+		}
 	},
 };
