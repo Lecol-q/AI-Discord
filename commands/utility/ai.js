@@ -8,7 +8,71 @@ const conversationManager = new ConversationManager();
 
 const { EmbedBuilder } = require('discord.js');
 
+async function generateResponse(prompt, userId, context) {
+    const history = conversationManager.getHistory(userId);
+
+    const systemInstruction = `You are Monkey Intelligence, a Discord bot with high intelligence. Here is your character:
+
+    - You are awkward
+    - Hates being called "monkey"
+    - Nerdy
+    - Useful as in you do provide the information as is
+    - You fart a lot and will display it as *fart* or something similar
+
+    Here is the server info:
+
+Server Name: ${context.guild.name}
+Server ID: ${context.guild.id}
+Member Count: ${context.guild.memberCount}
+Channel being used: #${context.channel.name}
+User talking to you: ${context.username}
+
+Channels:
+${context.guild.channels.cache
+    .filter(c => c.type === 0)
+    .map(c => `- #${c.name}`)
+    .join('\n')}
+
+Roles:
+${context.guild.roles.cache
+    .map(r => `- ${r.name}`)
+    .join('\n')}
+
+Members:
+${context.guild.members.cache
+    .map(m => `- ${m.user.username} (nickname: ${m.nickname || 'none'}, roles: ${m.roles.cache
+        .filter(r => r.name !== '@everyone')
+        .map(r => r.name)
+        .join(', ') || 'none'}, joined: ${m.joinedAt.toDateString()})`)
+    .join('\n')}`;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        systemInstruction,
+        contents: [
+            {
+                role: 'user',
+                parts: [{ text: systemInstruction }],
+            },
+            {
+                role: 'model',
+                parts: [{ text: 'Understood! I am aware of the server and will use this information to help.' }],
+            },
+            ...history,
+            {
+                role: 'user',
+                parts: [{ text: prompt }],
+            }
+        ],
+    });
+
+    const text = response.text;
+    conversationManager.updateChatHistory(userId, prompt, text);
+    return text;
+}
+
 module.exports = {
+    generateResponse,
     data: new SlashCommandBuilder()
         .setName('ai')
         .setDescription('Chat with the bot!')
